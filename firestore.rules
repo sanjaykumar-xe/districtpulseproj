@@ -1,0 +1,227 @@
+/**
+ * Core Philosophy: This ruleset enforces a security model with two distinct zones.
+ * 1. Public Information Zone: Data under the `/districts` collection, such as news articles,
+ *    geo-alerts, and trend insights, is publicly readable by anyone. All client-side writes
+ *    to this zone are disabled to ensure data integrity, assuming it's managed by trusted
+ *    backend processes. Citizen-submitted reports are also publicly readable to foster
+ *    transparency, but writes are strictly controlled.
+ * 2. Private User Zone: Each user's data, specifically their profile, is stored in a private
+ *    tree at `/users/{userId}`. Access is strictly limited to the authenticated user who owns
+ *    that data tree.
+ *
+ * Data Structure:
+ * - `/districts/{districtId}`: A top-level collection containing public information about a
+ *   district and its related subcollections (`news_articles`, `citizen_reports`, etc.).
+ * - `/users/{userId}`: A top-level collection where each document ID is a Firebase Auth UID.
+ *   This collection contains a private `profile` document for each user.
+ *
+ * Key Security Decisions:
+ * - Default Deny: All paths are closed by default.
+ * - Public Read, Admin Write: Most district-level data is treated as public and read-only
+ *   from the client's perspective. This prevents unauthorized modification of curated content.
+ * - User Content Ownership: Users can create `citizen_reports` and can only modify or delete
+ *   reports they originally created.
+ * - Strict User Privacy: User profiles are strictly private. A user can only access their
+ *   own profile document. Listing or discovering other users is explicitly forbidden.
+ * - Denormalization for Authorization: Citizen reports contain a `userId` field, and user
+ *   profiles contain a `firebaseAuthId`. These denormalized fields are essential for creating
+ *   fast, secure, and cost-effective security rules that don't rely on expensive `get()` calls.
+ * - Structural Segregation: Private user data (`/users`) is stored in a completely separate
+ *   collection from public data (`/districts`), which is a secure and performant pattern.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------------
+    // Helper Functions
+    // ------------------------------------------------------------------------
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the provided userId.
+     * This is the fundamental check for data ownership.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * Checks for ownership on an existing document. Used for update and delete
+     * operations to ensure the target document exists before applying the rule.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * Validates required fields for a new UserProfile document.
+     * Enforces that the internal IDs match the document path {userId}.
+     */
+    function hasValidUserProfileDataOnCreate(userId) {
+      let data = request.resource.data;
+      return data.firebaseAuthId == userId && data.id == userId;
+    }
+
+    /**
+     * Enforces immutability of critical UserProfile fields upon update.
+     * The user's unique identifiers cannot be changed after creation.
+     */
+    function isUserProfileImmutable() {
+      let incoming = request.resource.data;
+      let existing = resource.data;
+      return incoming.firebaseAuthId == existing.firebaseAuthId && incoming.id == existing.id;
+    }
+
+    /**
+     * Validates required fields for a new CitizenReport document.
+     * Enforces ownership and path consistency.
+     */
+    function hasValidCitizenReportDataOnCreate(districtId) {
+      let data = request.resource.data;
+      return data.userId == request.auth.uid && data.districtId == districtId;
+    }
+
+    /**
+     * Enforces immutability of critical CitizenReport fields upon update.
+     * The report's author and district cannot be changed.
+     */
+    function isCitizenReportImmutable(districtId) {
+      let incoming = request.resource.data;
+      let existing = resource.data;
+      return incoming.userId == existing.userId && incoming.districtId == districtId;
+    }
+
+
+    // ------------------------------------------------------------------------
+    // User Data Rules
+    // ------------------------------------------------------------------------
+
+    /**
+     * @description Top-level user collection. Itself, it is not readable or writable.
+     *              This rule block primarily serves to prevent user enumeration by
+     *              disallowing `list` operations on the entire `/users` collection.
+     * @path        /users/{userId}
+     * @allow       (none) - Access is only granted to nested documents.
+     * @deny        (list) A user tries to query the `/users` collection.
+     * @principle   Disables user enumeration for security and privacy.
+     */
+    match /users/{userId} {
+      allow get: if false;
+      allow list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Secures a user's private profile document. Only the owner
+     *              of the profile can read, create, update, or delete it.
+     * @path        /users/{userId}/profile
+     * @allow       (create) A newly authenticated user (auth.uid=`user_123`) creates
+     *              their own profile at `/users/user_123/profile`.
+     * @deny        (get) User `user_456` tries to read `/users/user_123/profile`.
+     * @principle   Enforces strict data ownership for a user's private data tree.
+     */
+    match /users/{userId}/profile {
+      allow get: if isOwner(userId);
+      allow list: if false; // This is a single document path, list is not applicable but denied for safety.
+      allow create: if isOwner(userId) && hasValidUserProfileDataOnCreate(userId);
+      allow update: if isOwner(userId) && resource != null && isUserProfileImmutable();
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+
+    // ------------------------------------------------------------------------
+    // District Data Rules
+    // ------------------------------------------------------------------------
+
+    /**
+     * @description Publicly readable district information. Assumed to be managed by a
+     *              backend service, so all client-side writes are disabled.
+     * @path        /districts/{districtId}
+     * @allow       (get) Any user, signed in or not, can read a district document.
+     * @deny        (create) Any user attempts to create a new district document.
+     * @principle   Provides public read access but prevents client-side data tampering.
+     */
+    match /districts/{districtId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Publicly readable news articles for a district. Assumed to be
+     *              managed by a backend service.
+     * @path        /districts/{districtId}/news_articles/{newsArticleId}
+     * @allow       (list) Any user can query for all news articles in a district.
+     * @deny        (update) Any user attempts to modify a news article.
+     * @principle   Provides public read access but prevents client-side data tampering.
+     */
+    match /districts/{districtId}/news_articles/{newsArticleId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Secures user-submitted citizen reports. Reports are publicly
+     *              readable to promote community awareness. However, only authenticated
+     *              users can create reports, and they can only edit or delete their own.
+     * @path        /districts/{districtId}/citizen_reports/{citizenReportId}
+     * @allow       (create) A signed-in user creates a report, correctly setting their
+     *              own `userId` and the parent `districtId` in the document.
+     * @deny        (update) A user tries to change the `userId` on an existing report.
+     * @principle   Implements a "Public Read with Owner-Only Writes" pattern for user-generated content.
+     */
+    match /districts/{districtId}/citizen_reports/{citizenReportId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && hasValidCitizenReportDataOnCreate(districtId);
+      allow update: if isExistingOwner(resource.data.userId) && isCitizenReportImmutable(districtId);
+      allow delete: if isExistingOwner(resource.data.userId);
+    }
+
+    /**
+     * @description Publicly readable geo-alerts for a district. Assumed to be
+     *              managed by a backend service.
+     * @path        /districts/{districtId}/geo_alerts/{geoAlertId}
+     * @allow       (list) Any user can query for all geo-alerts in a district.
+     * @deny        (delete) Any user attempts to delete a geo-alert.
+     * @principle   Provides public read access but prevents client-side data tampering.
+     */
+    match /districts/{districtId}/geo_alerts/{geoAlertId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Publicly readable trend insights for a district. Assumed to be
+     *              managed by a backend service.
+     * @path        /districts/{districtId}/trend_insights/{trendInsightId}
+     * @allow       (get) Any user can read a specific trend insight document.
+     * @deny        (create) Any user attempts to create a new trend insight.
+     * @principle   Provides public read access but prevents client-side data tampering.
+     */
+    match /districts/{districtId}/trend_insights/{trendInsightId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}

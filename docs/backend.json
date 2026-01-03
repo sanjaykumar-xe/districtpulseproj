@@ -1,0 +1,403 @@
+{
+  "entities": {
+    "District": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "District",
+      "type": "object",
+      "description": "Represents a district within India.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the District entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the district."
+        },
+        "state": {
+          "type": "string",
+          "description": "The state to which the district belongs."
+        },
+        "location": {
+          "type": "string",
+          "description": "Geolocation string of the district center. (latitude, longitude)"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "state"
+      ]
+    },
+    "NewsArticle": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "NewsArticle",
+      "type": "object",
+      "description": "Represents a news article fetched from a source.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the NewsArticle entity."
+        },
+        "districtId": {
+          "type": "string",
+          "description": "Reference to District. (Relationship: District 1:N NewsArticle)"
+        },
+        "url": {
+          "type": "string",
+          "description": "URL of the news article."
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the news article."
+        },
+        "summary": {
+          "type": "string",
+          "description": "AI-generated summary of the article."
+        },
+        "credibilityScore": {
+          "type": "number",
+          "description": "AI-assigned credibility score for the article (0-100)."
+        },
+        "credibilityExplanation": {
+          "type": "string",
+          "description": "AI's explanation of the credibility score."
+        },
+        "publishedDate": {
+          "type": "string",
+          "description": "The date when the article was originally published.",
+          "format": "date-time"
+        },
+        "keywords": {
+          "type": "array",
+          "description": "Keywords extracted from the news article to assist in indexing and searching",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "districtId",
+        "url",
+        "title",
+        "summary",
+        "credibilityScore"
+      ]
+    },
+    "CitizenReport": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CitizenReport",
+      "type": "object",
+      "description": "Represents a report submitted by a citizen.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the CitizenReport entity."
+        },
+        "districtId": {
+          "type": "string",
+          "description": "Reference to District. (Relationship: District 1:N CitizenReport)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N CitizenReport). Note: not the Firebase Auth ID.  This is the ID of the UserProfile."
+        },
+        "reportText": {
+          "type": "string",
+          "description": "Text of the citizen's report."
+        },
+        "reportVoice": {
+          "type": "string",
+          "description": "URL of the recorded voice report, if provided."
+        },
+        "reportImage": {
+          "type": "string",
+          "description": "URL of the uploaded image, if provided."
+        },
+        "category": {
+          "type": "string",
+          "description": "AI-classified category of the issue."
+        },
+        "location": {
+          "type": "string",
+          "description": "Geolocation string of the reported issue. (latitude, longitude)"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of when the report was submitted.",
+          "format": "date-time"
+        },
+        "responsibleAuthority": {
+          "type": "string",
+          "description": "AI suggested responsible Authority to handle the issue."
+        }
+      },
+      "required": [
+        "id",
+        "districtId",
+        "userId",
+        "category",
+        "location",
+        "timestamp"
+      ]
+    },
+    "GeoAlert": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GeoAlert",
+      "type": "object",
+      "description": "Represents a location-based alert.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the GeoAlert entity."
+        },
+        "districtId": {
+          "type": "string",
+          "description": "Reference to District. (Relationship: District 1:N GeoAlert)"
+        },
+        "location": {
+          "type": "string",
+          "description": "Geolocation string for the alert area. (latitude, longitude)"
+        },
+        "radius": {
+          "type": "number",
+          "description": "Radius (in meters) around the location for the alert."
+        },
+        "message": {
+          "type": "string",
+          "description": "The alert message."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp when the alert was created.",
+          "format": "date-time"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of alert (e.g., flood warning, power cut)."
+        }
+      },
+      "required": [
+        "id",
+        "districtId",
+        "location",
+        "radius",
+        "message",
+        "timestamp",
+        "type"
+      ]
+    },
+    "TrendInsight": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TrendInsight",
+      "type": "object",
+      "description": "Represents AI-generated insights about recurring issues.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the TrendInsight entity."
+        },
+        "districtId": {
+          "type": "string",
+          "description": "Reference to District. (Relationship: District 1:N TrendInsight)"
+        },
+        "summary": {
+          "type": "string",
+          "description": "AI-generated summary of the trend."
+        },
+        "relevantKeywords": {
+          "type": "array",
+          "description": "Keywords associated with the trend.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "startDate": {
+          "type": "string",
+          "description": "Start date of the time period analyzed for the trend.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "End date of the time period analyzed for the trend.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "districtId",
+        "summary",
+        "startDate",
+        "endDate"
+      ]
+    },
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user profile.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "firebaseAuthId": {
+          "type": "string",
+          "description": "The user's Firebase Authentication ID."
+        },
+        "districtId": {
+          "type": "string",
+          "description": "Reference to District. (Relationship: District 1:N UserProfile)"
+        },
+        "name": {
+          "type": "string",
+          "description": "User's full name."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "User's phone number."
+        },
+        "address": {
+          "type": "string",
+          "description": "User's address."
+        }
+      },
+      "required": [
+        "id",
+        "firebaseAuthId",
+        "districtId",
+        "name",
+        "email"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/districts/{districtId}",
+        "definition": {
+          "entityName": "District",
+          "schema": {
+            "$ref": "#/backend/entities/District"
+          },
+          "description": "Stores information about districts.",
+          "params": [
+            {
+              "name": "districtId",
+              "description": "The unique identifier for the district."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/districts/{districtId}/news_articles/{newsArticleId}",
+        "definition": {
+          "entityName": "NewsArticle",
+          "schema": {
+            "$ref": "#/backend/entities/NewsArticle"
+          },
+          "description": "Stores news articles related to a specific district. Includes denormalized 'districtId' for authorization independence.",
+          "params": [
+            {
+              "name": "districtId",
+              "description": "The unique identifier for the district."
+            },
+            {
+              "name": "newsArticleId",
+              "description": "The unique identifier for the news article."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/districts/{districtId}/citizen_reports/{citizenReportId}",
+        "definition": {
+          "entityName": "CitizenReport",
+          "schema": {
+            "$ref": "#/backend/entities/CitizenReport"
+          },
+          "description": "Stores citizen reports related to a specific district. Includes denormalized 'districtId' for authorization independence.",
+          "params": [
+            {
+              "name": "districtId",
+              "description": "The unique identifier for the district."
+            },
+            {
+              "name": "citizenReportId",
+              "description": "The unique identifier for the citizen report."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/districts/{districtId}/geo_alerts/{geoAlertId}",
+        "definition": {
+          "entityName": "GeoAlert",
+          "schema": {
+            "$ref": "#/backend/entities/GeoAlert"
+          },
+          "description": "Stores location-based alerts related to a specific district. Includes denormalized 'districtId' for authorization independence.",
+          "params": [
+            {
+              "name": "districtId",
+              "description": "The unique identifier for the district."
+            },
+            {
+              "name": "geoAlertId",
+              "description": "The unique identifier for the geo alert."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/districts/{districtId}/trend_insights/{trendInsightId}",
+        "definition": {
+          "entityName": "TrendInsight",
+          "schema": {
+            "$ref": "#/backend/entities/TrendInsight"
+          },
+          "description": "Stores trend insights related to a specific district. Includes denormalized 'districtId' for authorization independence.",
+          "params": [
+            {
+              "name": "districtId",
+              "description": "The unique identifier for the district."
+            },
+            {
+              "name": "trendInsightId",
+              "description": "The unique identifier for the trend insight."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/profile",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profile information.  Path-based ownership simplifies security rules.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the user."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to support the 'DistrictPulse' application, focusing on civic engagement and information dissemination within Indian districts. The structure prioritizes security, scalability, and ease of querying. Key design decisions include:\n\n1.  **Authorization Independence:** Denormalization is used to avoid hierarchical `get()` calls in security rules. The `districtId` is included in all subcollections to allow independent authorization.\n2.  **Structural Segregation:**  Data with different access requirements is stored in separate collections.  User-generated content (CitizenReports) is separated from system-generated content (NewsArticles, GeoAlerts, TrendInsights).\n3.  **Access Modeling:**\n    *   User profiles are stored under `/users/{userId}/profile` with the `userId` matching the Firebase Auth UID to establish clear ownership.\n    *   District-specific data (NewsArticles, CitizenReports, GeoAlerts, TrendInsights) are stored under `/districts/{districtId}/...`.\n4.  **QAPs (Rules Are Not Filters):** The structure enables secure `list` operations by ensuring that all documents in a collection share the same security posture. For instance, all documents in `/districts/{districtId}/news_articles` are news articles related to that district.\n\n**Denormalization Strategy:**\n\n*   `districtId` is included in `news_articles`, `citizen_reports`, `geo_alerts`, and `trend_insights` to allow querying and filtering data related to a specific district without performing collection group queries or complex `get()` calls in security rules. This achieves Authorization Independence.\n*   The `userId` is stored within the `citizen_reports` to associate the reports to the users.\n\n**Security Considerations:**\n\n*   Path-based ownership (`/users/{userId}/profile`) simplifies user data protection.\n*   All write operations should be validated against the schema to ensure data integrity.\n\n**Scalability Considerations:**\n\n*   The use of subcollections allows for efficient querying of data within a specific district.\n*   Data denormalization reduces the need for complex joins and lookups, improving read performance.\n\n**Debuggability Considerations:**\n\n*   Clear naming conventions and explicit state modeling (using the `status` field) make the data structure easier to understand and debug.\n*   Consistent use of `districtId` across collections simplifies filtering and troubleshooting issues related to specific districts."
+  }
+}
